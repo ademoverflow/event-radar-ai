@@ -20,7 +20,7 @@ echo "Updating package versions to: $NEW_VERSION (from tag: $LATEST_TAG)"
 
 # Cross-platform sed in-place edit
 sedi() {
-  if [[ "$OSTYPE" == "darwin"* ]]; th
+  if [[ "$OSTYPE" == "darwin"* ]]; then
     sed -i '' "$@"
   else
     sed -i "$@"
