@@ -8,12 +8,12 @@ resolution-markers = [
 
 [manifest]
 members = [
-    "ademoverflow-template",
+    "event-radar-ai",
     "core",
 ]
 
 [[package]]
-name = "ademoverflow-template"
+name = "event-radar-ai"
 version = "0.0.0"
 source = { virtual = "." }
 

@@ -1,8 +1,8 @@
-# Ademoverflow Template
+# Event Radar Ai
 
 ## Description
 
-A production-ready monorepo template for full-stack web applications with Python/FastAPI backend and React/TypeScript frontend.
+An AI assisted tool to track new events on the web, targeting agencies and corporations.
 
 ## Architecture
 
@@ -14,7 +14,7 @@ A production-ready monorepo template for full-stack web applications with Python
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                    Webapp (React SPA)                        │
-│                    localhost:8998                            │
+│                    localhost:7998                            │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │
 │  │  TanStack   │ │  TanStack   │ │    Tailwind CSS     │    │
 │  │   Router    │ │    Query    │ │                     │    │
@@ -24,7 +24,7 @@ A production-ready monorepo template for full-stack web applications with Python
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
 │                   Core API (FastAPI)                         │
-│                   localhost:8999                             │
+│                   localhost:7999                             │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │
 │  │   SQLModel  │ │     JWT     │ │      Alembic        │    │
 │  │     ORM     │ │    Auth     │ │    Migrations       │    │
@@ -58,20 +58,7 @@ A production-ready monorepo template for full-stack web applications with Python
 
 ## Quick Start
 
-### 1. Bootstrap the Project (Optional)
-
-If you're using this as a template for a new project:
-
-```bash
-./bootstrap.sh
-```
-
-This will prompt you for:
-- Project name
-- Project description
-- Base port number
-
-### 2. Configure Environment
+### 1. Configure Environment
 
 ```bash
 cp env.example .env
@@ -79,20 +66,20 @@ cp env.example .env
 
 Edit `.env` with your local settings (especially `WEBAPP_URL` and `COOKIE_DOMAIN` with your local IP).
 
-### 3. Start Development Stack
+### 2. Start Development Stack
 
 ```bash
 docker compose up
 ```
 
-### 4. Access Services
+### 3. Access Services
 
 | Service | URL | Description |
 |---------|-----|-------------|
-| Webapp | http://localhost:8998 | React frontend |
-| Core API | http://localhost:8999 | FastAPI backend |
-| API Docs | http://localhost:8999/docs | Swagger UI |
-| Adminer | http://localhost:8997 | Database admin |
+| Webapp | http://localhost:7998 | React frontend |
+| Core API | http://localhost:7999 | FastAPI backend |
+| API Docs | http://localhost:7999/docs | Swagger UI |
+| Adminer | http://localhost:7997 | Database admin |
 
 ## Project Structure
 
@@ -126,7 +113,6 @@ docker compose up
 ├── pyproject.toml          # Root Python config + tools
 ├── package.json            # Root Node config
 ├── biome.json              # JS/TS linting config
-├── bootstrap.sh            # Project initialization
 ├── CLAUDE.md               # AI assistant guide
 └── env.example             # Environment template
 ```

@@ -209,9 +209,9 @@ docker compose up
 ### Ports
 | Service | Port |
 |---------|------|
-| Adminer | 8997 |
-| Webapp  | 8998 |
-| Core API| 8999 |
+| Adminer | 7997 |
+| Webapp  | 7998 |
+| Core API| 7999 |
 
 ### Database Migrations
 Migrations auto-run on startup via FastAPI lifespan. Manual commands:

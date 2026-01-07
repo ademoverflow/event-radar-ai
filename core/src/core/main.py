@@ -30,8 +30,8 @@ async def lifespan(_app: FastAPI) -> AsyncIterator:
 
 
 app = FastAPI(
-    title="Ademoverflow Template",
-    description="Ademoverflow Template Core API",
+    title="Event Radar Ai",
+    description="Event Radar Ai Core API",
     version=__version__,
     lifespan=lifespan,
 )
