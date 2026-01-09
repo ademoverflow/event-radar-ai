@@ -2,7 +2,11 @@
 
 ## Description
 
-An AI assisted tool to track new events on the web, targeting agencies and corporations.
+The project aims to develop an AI-powered solution that helps event agencies identify high-potential commercial opportunities earlier.
+
+The tool detects weak signals related to past or upcoming events, identifies the right decision-makers, and qualifies leads using public and professional data.
+
+The goal is to significantly increase the chances of being invited to tenders by reaching advertisers at the right time with the right approach.
 
 ## Architecture
 
