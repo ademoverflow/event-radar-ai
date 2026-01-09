@@ -12,13 +12,13 @@ The goal is to significantly increase the chances of being invited to tenders by
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                         Browser                              │
+│                         Browser                             │
 └─────────────────────────┬───────────────────────────────────┘
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    Webapp (React SPA)                        │
-│                    localhost:7998                            │
+│                    Webapp (React SPA)                       │
+│                    localhost:7998                           │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │
 │  │  TanStack   │ │  TanStack   │ │    Tailwind CSS     │    │
 │  │   Router    │ │    Query    │ │                     │    │
@@ -27,8 +27,8 @@ The goal is to significantly increase the chances of being invited to tenders by
                           │ HTTP/REST
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   Core API (FastAPI)                         │
-│                   localhost:7999                             │
+│                   Core API (FastAPI)                        │
+│                   localhost:7999                            │
 │  ┌─────────────┐ ┌─────────────┐ ┌─────────────────────┐    │
 │  │   SQLModel  │ │     JWT     │ │      Alembic        │    │
 │  │     ORM     │ │    Auth     │ │    Migrations       │    │
@@ -37,8 +37,8 @@ The goal is to significantly increase the chances of being invited to tenders by
                           │ TCP
                           ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                   PostgreSQL 17                              │
-│                   db:5432                                    │
+│                   PostgreSQL 17                             │
+│                   db:5432                                   │
 └─────────────────────────────────────────────────────────────┘
 ```
 
