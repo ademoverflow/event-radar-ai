@@ -21,6 +21,17 @@ class Settings(BaseSettings):
     # Development mode (controls cookie security settings)
     dev_mode: bool = False
 
+    # OpenAI settings for LLM signal extraction
+    openai_api_key: str = ""
+    openai_model: str = "gpt-5.2"
+
+    # LinkedIn scraper settings (Phantombuster)
+    phantombuster_api_key: str = ""
+
+    # Crawling settings
+    default_crawl_frequency_hours: int = 24
+    max_posts_per_crawl: int = 20
+
     @property
     def cookie_secure(self) -> bool:
         """Return True for HTTPS-only cookies in production."""

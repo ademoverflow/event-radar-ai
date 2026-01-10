@@ -8,6 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from core import __version__
 from core.routers import health_router
+from core.scheduler import scheduler, start_scheduler, stop_scheduler
+from core.scheduler.jobs import register_jobs
 from core.settings import get_settings
 
 settings = get_settings()
@@ -26,7 +28,15 @@ async def lifespan(_app: FastAPI) -> AsyncIterator:
     """
     config = Config("core/src/core/alembic/alembic.ini")
     command.upgrade(config, "head")
+
+    # Start the background scheduler
+    register_jobs(scheduler)
+    await start_scheduler()
+
     yield
+
+    # Stop the scheduler on shutdown
+    await stop_scheduler()
 
 
 app = FastAPI(
