@@ -1,13 +1,13 @@
-from core.models.keyword import Keyword
+from core.models.linkedin_profile import LinkedInMonitoredProfile
+from core.models.linkedin_search import LinkedInSearch
+from core.models.linkedin_signal import LinkedInSignal
 from core.models.post import LinkedInPost
-from core.models.profile import MonitoredProfile
-from core.models.signal import Signal
 from core.models.user import User
 
 __all__ = [
-    "Keyword",
+    "LinkedInMonitoredProfile",
     "LinkedInPost",
-    "MonitoredProfile",
-    "Signal",
+    "LinkedInSearch",
+    "LinkedInSignal",
     "User",
 ]

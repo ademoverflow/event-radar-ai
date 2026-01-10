@@ -1,16 +1,23 @@
 import uuid
 from datetime import date, datetime
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar, Literal, get_args
 
 from sqlalchemy import UUID, Column, Date, DateTime, Float, ForeignKey, String, Text, text
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, ENUM, JSONB
 from sqlmodel import Field, SQLModel
 
+EventTiming = Literal["past", "future", "unknown"]
+EventTimingEnum = ENUM(
+    *get_args(EventTiming),
+    name="event_timing",
+    create_type=True,
+)
 
-class Signal(SQLModel, table=True):
+
+class LinkedInSignal(SQLModel, table=True):
     """An event signal extracted from a LinkedIn post using LLM analysis."""
 
-    __tablename__: ClassVar[str] = "signals"
+    __tablename__: ClassVar[str] = "linkedin_signals"
 
     id: uuid.UUID = Field(
         sa_column=Column(
@@ -19,14 +26,6 @@ class Signal(SQLModel, table=True):
             server_default=text("gen_random_uuid()"),
         ),
         default_factory=uuid.uuid4,
-    )
-    created_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=text("now()"),
-            nullable=False,
-        ),
-        default_factory=datetime.now,
     )
     user_id: uuid.UUID = Field(
         sa_column=Column(
@@ -48,8 +47,8 @@ class Signal(SQLModel, table=True):
         sa_column=Column(String(50), nullable=True),
         default=None,
     )
-    event_timing: Literal["past", "future", "unknown"] = Field(
-        sa_column=Column(String(20), nullable=False),
+    event_timing: EventTiming = Field(
+        sa_column=Column(EventTimingEnum, nullable=False),
         default="unknown",
     )
     event_date: date | None = Field(
@@ -80,4 +79,12 @@ class Signal(SQLModel, table=True):
     raw_llm_response: dict[str, Any] = Field(
         sa_column=Column(JSONB, nullable=False),
         default_factory=dict,
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=text("now()"),
+            nullable=False,
+        ),
+        default_factory=datetime.now,
     )

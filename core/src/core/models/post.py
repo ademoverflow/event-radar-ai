@@ -31,16 +31,16 @@ class LinkedInPost(SQLModel, table=True):
     profile_id: uuid.UUID | None = Field(
         sa_column=Column(
             UUID,
-            ForeignKey("monitored_profiles.id", ondelete="SET NULL"),
+            ForeignKey("linkedin_monitored_profiles.id", ondelete="SET NULL"),
             nullable=True,
             index=True,
         ),
         default=None,
     )
-    keyword_id: uuid.UUID | None = Field(
+    search_id: uuid.UUID | None = Field(
         sa_column=Column(
             UUID,
-            ForeignKey("keywords.id", ondelete="SET NULL"),
+            ForeignKey("linkedin_searches.id", ondelete="SET NULL"),
             nullable=True,
             index=True,
         ),

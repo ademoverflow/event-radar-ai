@@ -1,15 +1,23 @@
 import uuid
 from datetime import datetime
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, get_args
 
 from sqlalchemy import UUID, Column, DateTime, ForeignKey, String, text
+from sqlalchemy.dialects.postgresql import ENUM
 from sqlmodel import Field, SQLModel
 
+ProfileType = Literal["company", "personal"]
+ProfileTypeEnum = ENUM(
+    *get_args(ProfileType),
+    name="profile_type",
+    create_type=True,
+)
 
-class MonitoredProfile(SQLModel, table=True):
+
+class LinkedInMonitoredProfile(SQLModel, table=True):
     """A LinkedIn profile monitored by a user for event signals."""
 
-    __tablename__: ClassVar[str] = "monitored_profiles"
+    __tablename__: ClassVar[str] = "linkedin_monitored_profiles"
 
     id: uuid.UUID = Field(
         sa_column=Column(
@@ -27,28 +35,11 @@ class MonitoredProfile(SQLModel, table=True):
             index=True,
         ),
     )
-    created_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=text("now()"),
-            nullable=False,
-        ),
-        default_factory=datetime.now,
-    )
-    updated_at: datetime = Field(
-        sa_column=Column(
-            DateTime(timezone=True),
-            server_default=text("now()"),
-            onupdate=text("now()"),
-            nullable=False,
-        ),
-        default_factory=datetime.now,
-    )
-    linkedin_url: str = Field(
+    url: str = Field(
         sa_column=Column(String(500), nullable=False),
     )
-    profile_type: Literal["company", "personal"] = Field(
-        sa_column=Column(String(20), nullable=False),
+    profile_type: ProfileType = Field(
+        sa_column=Column(ProfileTypeEnum, nullable=False),
     )
     display_name: str = Field(
         sa_column=Column(String(200), nullable=False),
@@ -66,4 +57,21 @@ class MonitoredProfile(SQLModel, table=True):
         default=True,
         nullable=False,
         sa_column_kwargs={"server_default": text("true")},
+    )
+    created_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=text("now()"),
+            nullable=False,
+        ),
+        default_factory=datetime.now,
+    )
+    updated_at: datetime = Field(
+        sa_column=Column(
+            DateTime(timezone=True),
+            server_default=text("now()"),
+            onupdate=text("now()"),
+            nullable=False,
+        ),
+        default_factory=datetime.now,
     )
