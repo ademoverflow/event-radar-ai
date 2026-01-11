@@ -1,20 +1,51 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { LogOut, Radar, User as UserIcon } from "lucide-react";
 import { useLogout, useUser } from "@/hooks/useAuth";
+import { cn } from "@/lib/utils";
 
 export function Navbar() {
 	const { data: user, isLoading } = useUser();
 	const logout = useLogout();
+	const routerState = useRouterState();
+	const currentPath = routerState.location.pathname;
+
+	const navLinks = [
+		{ to: "/", label: "Dashboard" },
+		{ to: "/profiles", label: "Profiles" },
+		{ to: "/searches", label: "Searches" },
+		{ to: "/signals", label: "Signals" },
+	];
 
 	return (
 		<nav className="bg-white border-b border-slate-200 px-6 py-4">
 			<div className="max-w-7xl mx-auto flex items-center justify-between">
-				<Link to="/" className="flex items-center gap-2">
-					<Radar className="w-6 h-6 text-blue-600" />
-					<span className="text-xl font-semibold text-slate-900">
-						Event Radar
-					</span>
-				</Link>
+				<div className="flex items-center gap-8">
+					<Link to="/" className="flex items-center gap-2">
+						<Radar className="w-6 h-6 text-blue-600" />
+						<span className="text-xl font-semibold text-slate-900">
+							Event Radar
+						</span>
+					</Link>
+
+					{user && (
+						<div className="flex items-center gap-1">
+							{navLinks.map((link) => (
+								<Link
+									key={link.to}
+									to={link.to}
+									className={cn(
+										"px-3 py-2 text-sm font-medium rounded-md transition-colors",
+										currentPath === link.to
+											? "bg-slate-100 text-slate-900"
+											: "text-slate-600 hover:text-slate-900 hover:bg-slate-50",
+									)}
+								>
+									{link.label}
+								</Link>
+							))}
+						</div>
+					)}
+				</div>
 
 				<div className="flex items-center gap-4">
 					{isLoading ? (

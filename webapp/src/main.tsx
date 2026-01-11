@@ -15,6 +15,9 @@ import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import About from "./pages/About.tsx";
 import { Dashboard } from "./pages/Dashboard.tsx";
 import { LoginPage } from "./pages/Login.tsx";
+import { ProfilesPage } from "./pages/Profiles.tsx";
+import { SearchesPage } from "./pages/Searches.tsx";
+import { SignalsPage } from "./pages/Signals.tsx";
 
 const rootRoute = createRootRoute({
 	component: Layout,
@@ -44,9 +47,33 @@ const aboutRoute = createRoute({
 	component: About,
 });
 
+const profilesRoute = createRoute({
+	getParentRoute: () => protectedRoute,
+	path: "/profiles",
+	component: ProfilesPage,
+});
+
+const searchesRoute = createRoute({
+	getParentRoute: () => protectedRoute,
+	path: "/searches",
+	component: SearchesPage,
+});
+
+const signalsRoute = createRoute({
+	getParentRoute: () => protectedRoute,
+	path: "/signals",
+	component: SignalsPage,
+});
+
 const routeTree = rootRoute.addChildren([
 	loginRoute,
-	protectedRoute.addChildren([indexRoute, aboutRoute]),
+	protectedRoute.addChildren([
+		indexRoute,
+		aboutRoute,
+		profilesRoute,
+		searchesRoute,
+		signalsRoute,
+	]),
 ]);
 
 const TanStackQueryProviderContext = TanStackQueryProvider.getContext();
