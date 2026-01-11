@@ -21,12 +21,14 @@ class Settings(BaseSettings):
     # Development mode (controls cookie security settings)
     dev_mode: bool = False
 
-    # OpenAI settings for LLM signal extraction
-    openai_api_key: str = ""
-    openai_model: str = "gpt-5.2"
-
     # LinkedIn scraper settings (Phantombuster)
     phantombuster_api_key: str = ""
+    phantombuster_profile_posts_agent_id: str = ""
+
+    # LinkedIn session credentials (li_at)
+    linkedin_session_cookie: str
+    # LinkedIn User-Agent
+    linkedin_user_agent: str
 
     # Crawling settings
     default_crawl_frequency_hours: int = 24
