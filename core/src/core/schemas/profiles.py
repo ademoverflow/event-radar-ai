@@ -45,3 +45,11 @@ class ProfileListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+
+
+class ProfileCrawlResponse(BaseModel):
+    """Schema for profile crawl response."""
+
+    message: str
+    posts_found: int
+    profile: ProfileResponse

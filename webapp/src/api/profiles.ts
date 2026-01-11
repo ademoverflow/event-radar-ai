@@ -32,6 +32,12 @@ export interface ProfileUpdate {
 	is_active?: boolean;
 }
 
+export interface ProfileCrawlResponse {
+	message: string;
+	posts_found: number;
+	profile: Profile;
+}
+
 export const profilesApi = {
 	list: (params?: { limit?: number; offset?: number; is_active?: boolean }) => {
 		const searchParams = new URLSearchParams();
@@ -65,7 +71,7 @@ export const profilesApi = {
 		}),
 
 	triggerCrawl: (id: string) =>
-		apiClient<{ message: string }>(`/profiles/${id}/crawl`, {
+		apiClient<ProfileCrawlResponse>(`/profiles/${id}/crawl`, {
 			method: "POST",
 		}),
 };

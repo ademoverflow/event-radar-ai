@@ -12,12 +12,15 @@ from core.database import get_session
 from core.middlewares.user import get_current_user
 from core.models.linkedin_profile import LinkedInMonitoredProfile
 from core.models.user import User
+from core.scheduler.jobs import crawl_single_profile
 from core.schemas.profiles import (
+    ProfileCrawlResponse,
     ProfileCreate,
     ProfileListResponse,
     ProfileResponse,
     ProfileUpdate,
 )
+from core.services.linkedin_scraper import LinkedInScraperError
 
 profiles_router = APIRouter(prefix="/profiles", tags=["Profiles"])
 
@@ -175,8 +178,8 @@ async def trigger_crawl(
     profile_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> dict[str, str]:
-    """Trigger a manual crawl for a profile."""
+) -> ProfileCrawlResponse:
+    """Trigger a manual crawl for a profile using Phantombuster."""
     query = select(LinkedInMonitoredProfile).where(
         col(LinkedInMonitoredProfile.id) == profile_id,
         col(LinkedInMonitoredProfile.user_id) == current_user.id,
@@ -190,5 +193,22 @@ async def trigger_crawl(
             detail="Profile not found",
         )
 
-    # Placeholder - scheduler integration to be implemented
-    return {"message": f"Crawl triggered for profile {profile.display_name}"}
+    try:
+        posts_found = await crawl_single_profile(profile, session)
+        await session.refresh(profile)
+
+        return ProfileCrawlResponse(
+            message=f"Successfully crawled {profile.display_name}",
+            posts_found=posts_found,
+            profile=_profile_to_response(profile),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=str(e),
+        ) from e
+    except LinkedInScraperError as e:
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY,
+            detail=f"Failed to crawl profile: {e}",
+        ) from e

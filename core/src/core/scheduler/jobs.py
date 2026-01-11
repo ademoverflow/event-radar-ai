@@ -76,6 +76,73 @@ async def _store_posts(
     return stored_count
 
 
+async def crawl_single_profile(
+    profile: LinkedInMonitoredProfile,
+    session: AsyncSession,
+) -> int:
+    """Crawl a single LinkedIn profile and store the posts.
+
+    Args:
+        profile: The profile to crawl
+        session: Database session
+
+    Returns:
+        Number of new posts stored
+
+    Raises:
+        LinkedInScraperError: If scraping fails
+        ValueError: If required settings are missing
+
+    """
+    if not settings.phantombuster_api_key:
+        msg = "Phantombuster API key not configured"
+        raise ValueError(msg)
+
+    if not settings.phantombuster_profile_posts_agent_id:
+        msg = "Profile posts agent ID not configured"
+        raise ValueError(msg)
+
+    if not settings.linkedin_session_cookie:
+        msg = "LinkedIn session cookie not configured"
+        raise ValueError(msg)
+
+    scraper = _get_scraper()
+
+    # Store values before any commits that might invalidate the session state
+    profile_id = str(profile.id)
+    profile_url = profile.url
+    profile_display_name = profile.display_name
+
+    logger.info(
+        f"Crawling profile: {profile_display_name}",
+        extra={"profile_id": profile_id, "url": profile_url},
+    )
+
+    posts = await scraper.scrape_profile_posts(
+        profile_url=profile_url,
+        max_posts=settings.max_posts_per_crawl,
+        session_cookie=settings.linkedin_session_cookie,
+        user_agent=settings.linkedin_user_agent or None,
+    )
+
+    stored = await _store_posts(
+        session=session,
+        posts=posts,
+        profile_id=profile_id,
+    )
+
+    # Update last_crawled_at
+    profile.last_crawled_at = datetime.now(UTC)
+    await session.commit()
+
+    logger.info(
+        f"Stored {stored} new posts from profile {profile_display_name}",
+        extra={"profile_id": profile_id},
+    )
+
+    return stored
+
+
 async def crawl_profiles_job() -> None:
     """Background job to crawl monitored LinkedIn profiles.
 
@@ -95,8 +162,6 @@ async def crawl_profiles_job() -> None:
     if not settings.linkedin_session_cookie:
         logger.warning("LinkedIn session cookie not configured, skipping profile crawl")
         return
-
-    scraper = _get_scraper()
 
     async with async_session_factory() as session:
         # Find profiles due for crawling
@@ -130,34 +195,9 @@ async def crawl_profiles_job() -> None:
                     if now < next_crawl:
                         continue
 
-                logger.info(
-                    f"Crawling profile: {profile.display_name}",
-                    extra={"profile_id": str(profile.id), "url": profile.url},
-                )
+                await crawl_single_profile(profile, session)
 
-                posts = await scraper.scrape_profile_posts(
-                    profile_url=profile.url,
-                    max_posts=settings.max_posts_per_crawl,
-                    session_cookie=settings.linkedin_session_cookie,
-                    user_agent=settings.linkedin_user_agent or None,
-                )
-
-                stored = await _store_posts(
-                    session=session,
-                    posts=posts,
-                    profile_id=str(profile.id),
-                )
-
-                # Update last_crawled_at
-                profile.last_crawled_at = now
-                await session.commit()
-
-                logger.info(
-                    f"Stored {stored} new posts from profile {profile.display_name}",
-                    extra={"profile_id": str(profile.id)},
-                )
-
-            except LinkedInScraperError:
+            except (LinkedInScraperError, ValueError):
                 logger.exception(
                     f"Failed to crawl profile {profile.display_name}",
                     extra={"profile_id": str(profile.id)},
