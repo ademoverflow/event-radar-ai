@@ -1,19 +1,71 @@
-import { Building2, Calendar, ExternalLink, Users } from "lucide-react";
+import {
+	Building2,
+	Calendar,
+	CalendarCheck,
+	CalendarClock,
+	CircleHelp,
+	ExternalLink,
+	Gift,
+	Mic2,
+	Presentation,
+	Sparkles,
+	Store,
+	Users,
+	Video,
+} from "lucide-react";
 import type { Signal } from "@/api/signals";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+
+// Map event types to human-readable labels and icons
+const EVENT_TYPE_CONFIG: Record<
+	string,
+	{ label: string; icon: React.ElementType }
+> = {
+	seminar: { label: "Seminar", icon: Presentation },
+	convention: { label: "Convention", icon: Users },
+	product_launch: { label: "Product Launch", icon: Sparkles },
+	anniversary: { label: "Anniversary", icon: Gift },
+	trade_show: { label: "Trade Show", icon: Store },
+	conference: { label: "Conference", icon: Mic2 },
+	webinar: { label: "Webinar", icon: Video },
+	networking: { label: "Networking", icon: Users },
+	other: { label: "Other Event", icon: Calendar },
+};
+
+// Map event timing to human-readable labels and icons
+const EVENT_TIMING_CONFIG: Record<
+	string,
+	{
+		label: string;
+		icon: React.ElementType;
+		variant: "success" | "secondary" | "warning";
+	}
+> = {
+	future: { label: "Upcoming", icon: CalendarClock, variant: "success" },
+	past: { label: "Past Event", icon: CalendarCheck, variant: "secondary" },
+	unknown: { label: "Date Unknown", icon: CircleHelp, variant: "warning" },
+};
 
 interface SignalCardProps {
 	signal: Signal;
 }
 
 export function SignalCard({ signal }: SignalCardProps) {
-	const timingVariant =
-		signal.event_timing === "future"
-			? "success"
-			: signal.event_timing === "past"
-				? "secondary"
-				: "warning";
+	const eventTypeConfig = signal.event_type
+		? (EVENT_TYPE_CONFIG[signal.event_type] ?? {
+				label: signal.event_type,
+				icon: Calendar,
+			})
+		: null;
+
+	const timingConfig = EVENT_TIMING_CONFIG[signal.event_timing] ?? {
+		label: signal.event_timing,
+		icon: CircleHelp,
+		variant: "warning" as const,
+	};
+
+	const TimingIcon = timingConfig.icon;
 
 	return (
 		<Card>
@@ -21,10 +73,19 @@ export function SignalCard({ signal }: SignalCardProps) {
 				<div className="flex items-start justify-between gap-4">
 					<div className="flex-1 min-w-0">
 						<div className="flex items-center gap-2 flex-wrap">
-							{signal.event_type && (
-								<Badge variant="info">{signal.event_type}</Badge>
+							{eventTypeConfig && (
+								<Badge variant="info" className="flex items-center gap-1">
+									<eventTypeConfig.icon className="h-3 w-3" />
+									{eventTypeConfig.label}
+								</Badge>
 							)}
-							<Badge variant={timingVariant}>{signal.event_timing}</Badge>
+							<Badge
+								variant={timingConfig.variant}
+								className="flex items-center gap-1"
+							>
+								<TimingIcon className="h-3 w-3" />
+								{timingConfig.label}
+							</Badge>
 							{signal.event_date && (
 								<span className="text-xs text-slate-500 flex items-center gap-1">
 									<Calendar className="h-3 w-3" />

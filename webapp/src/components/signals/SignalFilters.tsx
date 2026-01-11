@@ -42,20 +42,20 @@ export function SignalFilters({
 		<div className="flex flex-wrap items-end gap-4 p-4 bg-slate-50 rounded-lg">
 			<div className="grid gap-1.5">
 				<Label htmlFor={`${id}-event-timing`} className="text-xs">
-					Timing
+					Event Timing
 				</Label>
 				<Select
 					value={filters.event_timing ?? "all"}
 					onValueChange={(v) => handleChange("event_timing", v)}
 				>
-					<SelectTrigger id={`${id}-event-timing`} className="w-32">
+					<SelectTrigger id={`${id}-event-timing`} className="w-40">
 						<SelectValue placeholder="All" />
 					</SelectTrigger>
 					<SelectContent>
-						<SelectItem value="all">All</SelectItem>
-						<SelectItem value="future">Future</SelectItem>
-						<SelectItem value="past">Past</SelectItem>
-						<SelectItem value="unknown">Unknown</SelectItem>
+						<SelectItem value="all">All Events</SelectItem>
+						<SelectItem value="future">Upcoming Events</SelectItem>
+						<SelectItem value="past">Past Events</SelectItem>
+						<SelectItem value="unknown">Date Unknown</SelectItem>
 					</SelectContent>
 				</Select>
 			</div>
