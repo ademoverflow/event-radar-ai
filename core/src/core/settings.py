@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     core_jwt_secret_key: str
     core_jwt_expiration_timedelta_minutes: int
     webapp_url: str
-    cookie_domain: str
+    cookie_domain: str | None = None
 
     # Development mode (controls cookie security settings)
     dev_mode: bool = False
