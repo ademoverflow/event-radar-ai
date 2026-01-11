@@ -34,6 +34,9 @@ class Settings(BaseSettings):
     default_crawl_frequency_hours: int = 24
     max_posts_per_crawl: int = 20
 
+    # OpenAI settings for LLM signal extraction
+    openai_api_key: str
+
     @property
     def cookie_secure(self) -> bool:
         """Return True for HTTPS-only cookies in production."""

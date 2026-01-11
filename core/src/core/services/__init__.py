@@ -4,6 +4,12 @@ from core.services.linkedin_scraper import (
     LinkedInScraper,
     LinkedInScraperError,
 )
+from core.services.llm import (
+    LLMService,
+    LLMServiceError,
+    SignalExtraction,
+    get_llm_service,
+)
 from core.services.phantombuster import (
     AgentDetails,
     AgentOutput,
@@ -19,11 +25,15 @@ __all__ = [
     "AgentOutput",
     "AgentStatus",
     "AgentSummary",
+    "LLMService",
+    "LLMServiceError",
     "LinkedInPostData",
     "LinkedInProfileData",
     "LinkedInScraper",
     "LinkedInScraperError",
     "PhantombusterClient",
     "PhantombusterError",
+    "SignalExtraction",
     "ValidationResult",
+    "get_llm_service",
 ]

@@ -3,12 +3,13 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
-from sqlalchemy import select
+from sqlmodel import col, select
 
 from core.database import async_session_factory
 from core.logger import get_logger
-from core.models import LinkedInMonitoredProfile, LinkedInPost
+from core.models import LinkedInMonitoredProfile, LinkedInPost, LinkedInSearch, LinkedInSignal
 from core.services.linkedin_scraper import LinkedInPostData, LinkedInScraper, LinkedInScraperError
+from core.services.llm import LLMService, LLMServiceError, SignalExtraction
 from core.settings import get_settings
 
 if TYPE_CHECKING:
@@ -17,6 +18,9 @@ if TYPE_CHECKING:
 
 logger = get_logger(__name__)
 settings = get_settings()
+
+# Minimum relevance score to create a signal for non-event posts
+MIN_RELEVANCE_SCORE_FOR_SIGNAL = 0.3
 
 
 def _get_scraper() -> LinkedInScraper:
@@ -221,6 +225,224 @@ async def crawl_searches_job() -> None:
     logger.info("Search crawl job skipped - not yet implemented")
 
 
+async def _get_user_id_for_post(
+    session: AsyncSession,
+    post: LinkedInPost,
+) -> str | None:
+    """Get the user_id associated with a post via its profile or search.
+
+    Args:
+        session: Database session
+        post: The post to get user_id for
+
+    Returns:
+        User ID as string, or None if not found
+
+    """
+    if post.profile_id:
+        result = await session.execute(
+            select(col(LinkedInMonitoredProfile.user_id)).where(
+                col(LinkedInMonitoredProfile.id) == post.profile_id
+            )
+        )
+        user_id = result.scalar_one_or_none()
+        if user_id:
+            return str(user_id)
+
+    if post.search_id:
+        result = await session.execute(
+            select(col(LinkedInSearch.user_id)).where(col(LinkedInSearch.id) == post.search_id)
+        )
+        user_id = result.scalar_one_or_none()
+        if user_id:
+            return str(user_id)
+
+    return None
+
+
+async def _create_signal_from_extraction(
+    session: AsyncSession,
+    post: LinkedInPost,
+    user_id: str,
+    extraction: SignalExtraction,
+) -> LinkedInSignal:
+    """Create a LinkedInSignal from an LLM extraction result.
+
+    Args:
+        session: Database session
+        post: The source post
+        user_id: The user ID to associate with the signal
+        extraction: The extracted signal data from LLM
+
+    Returns:
+        The created LinkedInSignal
+
+    """
+    signal = LinkedInSignal(
+        user_id=user_id,  # type: ignore[arg-type]
+        post_id=str(post.id),  # type: ignore[arg-type]
+        event_type=extraction.event_type,
+        event_timing=extraction.event_timing,
+        event_date=extraction.event_date,
+        event_date_inferred=extraction.date_is_inferred,
+        companies_mentioned=extraction.companies_mentioned,
+        people_mentioned=extraction.people_mentioned,
+        relevance_score=extraction.relevance_score,
+        summary=extraction.summary,
+        raw_llm_response=extraction.model_dump(mode="json"),
+    )
+    session.add(signal)
+    return signal
+
+
+async def analyze_single_post(
+    post: LinkedInPost,
+    session: AsyncSession,
+    llm_service: LLMService | None = None,
+) -> LinkedInSignal | None:
+    """Analyze a single post for event signals using LLM.
+
+    Args:
+        post: The post to analyze
+        session: Database session
+        llm_service: Optional LLM service instance (will create one if not provided)
+
+    Returns:
+        The created signal if an event was detected, None otherwise
+
+    Raises:
+        LLMServiceError: If LLM extraction fails
+        ValueError: If user_id cannot be determined for the post
+
+    """
+    # Get user_id for this post
+    user_id = await _get_user_id_for_post(session, post)
+    if not user_id:
+        msg = f"Could not determine user_id for post {post.id}"
+        raise ValueError(msg)
+
+    # Store values before any potential commits
+    post_id = str(post.id)
+    post_content = post.content
+    author_name = post.author_name
+
+    # Initialize LLM service if not provided
+    if llm_service is None:
+        llm_service = LLMService()
+
+    logger.info(
+        "Analyzing post for signals",
+        extra={"post_id": post_id, "author": author_name},
+    )
+
+    # Extract signal from post content
+    extraction = await llm_service.extract_signal(
+        post_content=post_content,
+        author_name=author_name,
+    )
+
+    if extraction is None:
+        logger.warning(
+            "LLM extraction returned None",
+            extra={"post_id": post_id},
+        )
+        return None
+
+    # Only create signal if event-related or has meaningful relevance
+    is_not_relevant = extraction.relevance_score < MIN_RELEVANCE_SCORE_FOR_SIGNAL
+    if not extraction.is_event_related and is_not_relevant:
+        logger.debug(
+            "Post not event-related, skipping signal creation",
+            extra={"post_id": post_id, "relevance_score": extraction.relevance_score},
+        )
+        return None
+
+    signal = await _create_signal_from_extraction(
+        session=session,
+        post=post,
+        user_id=user_id,
+        extraction=extraction,
+    )
+
+    await session.commit()
+
+    logger.info(
+        "Created signal for post",
+        extra={
+            "post_id": post_id,
+            "signal_id": str(signal.id),
+            "event_type": extraction.event_type,
+            "relevance_score": extraction.relevance_score,
+        },
+    )
+
+    return signal
+
+
+async def analyze_posts_job() -> None:
+    """Background job to analyze unprocessed posts for event signals.
+
+    This job runs periodically to process posts that haven't been
+    analyzed by the LLM yet. It finds posts without associated signals
+    and extracts event information from them.
+    """
+    logger.info("Starting post analysis job")
+
+    if not settings.openai_api_key:
+        logger.warning("OpenAI API key not configured, skipping post analysis")
+        return
+
+    async with async_session_factory() as session:
+        # Find posts that don't have signals yet
+        # Using a subquery to find post_ids that already have signals
+        existing_signal_post_ids = select(col(LinkedInSignal.post_id))
+
+        # Select posts not in that list, ordered by created_at desc (newest first)
+        statement = (
+            select(LinkedInPost)
+            .where(col(LinkedInPost.id).notin_(existing_signal_post_ids))
+            .order_by(col(LinkedInPost.created_at).desc())
+            .limit(50)  # Process max 50 posts per job run to avoid timeout
+        )
+
+        result = await session.execute(statement)
+        posts = result.scalars().all()
+
+        if not posts:
+            logger.info("No posts pending analysis")
+            return
+
+        logger.info(f"Found {len(posts)} posts to analyze")
+
+        # Create a shared LLM service instance
+        llm_service = LLMService()
+        signals_created = 0
+        errors = 0
+
+        for post in posts:
+            try:
+                signal = await analyze_single_post(
+                    post=post,
+                    session=session,
+                    llm_service=llm_service,
+                )
+                if signal:
+                    signals_created += 1
+
+            except (LLMServiceError, ValueError) as e:
+                errors += 1
+                logger.warning(
+                    f"Failed to analyze post: {e}",
+                    extra={"post_id": str(post.id)},
+                )
+                continue
+
+    logger.info(
+        "Post analysis job completed",
+        extra={"signals_created": signals_created, "errors": errors},
+    )
+
+
 def register_jobs(scheduler: AsyncIOScheduler) -> None:
     """Register all scheduled jobs with the scheduler."""
     # Run profile crawl every 15 minutes to check for due profiles
@@ -243,6 +465,14 @@ def register_jobs(scheduler: AsyncIOScheduler) -> None:
         replace_existing=True,
     )
 
-    logger.info("Registered scheduled jobs")
+    # Run post analysis every 10 minutes to process new posts for signals
+    scheduler.add_job(
+        analyze_posts_job,
+        trigger="interval",
+        minutes=10,
+        id="analyze_posts",
+        name="Analyze Posts for Signals",
+        replace_existing=True,
+    )
 
     logger.info("Registered scheduled jobs")
