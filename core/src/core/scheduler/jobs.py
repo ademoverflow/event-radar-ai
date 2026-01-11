@@ -83,12 +83,15 @@ async def _store_posts(
 async def crawl_single_profile(
     profile: LinkedInMonitoredProfile,
     session: AsyncSession,
+    *,
+    run_llm_analysis: bool = True,
 ) -> int:
     """Crawl a single LinkedIn profile and store the posts.
 
     Args:
         profile: The profile to crawl
         session: Database session
+        run_llm_analysis: Whether to run LLM signal extraction on new posts
 
     Returns:
         Number of new posts stored
@@ -144,7 +147,68 @@ async def crawl_single_profile(
         extra={"profile_id": profile_id},
     )
 
+    # Run LLM analysis on newly stored posts if enabled and API key is configured
+    if run_llm_analysis and stored > 0 and settings.openai_api_key:
+        await _analyze_profile_posts(session, profile_id)
+
     return stored
+
+
+async def _analyze_profile_posts(session: AsyncSession, profile_id: str) -> None:
+    """Analyze posts from a specific profile for event signals.
+
+    Args:
+        session: Database session
+        profile_id: The profile ID whose posts should be analyzed
+
+    """
+    # Find posts from this profile that don't have signals yet
+    existing_signal_post_ids = select(col(LinkedInSignal.post_id))
+
+    statement = (
+        select(LinkedInPost)
+        .where(
+            col(LinkedInPost.profile_id) == profile_id,
+            col(LinkedInPost.id).notin_(existing_signal_post_ids),
+        )
+        .order_by(col(LinkedInPost.created_at).desc())
+    )
+
+    result = await session.execute(statement)
+    posts = result.scalars().all()
+
+    if not posts:
+        logger.debug("No new posts to analyze for profile", extra={"profile_id": profile_id})
+        return
+
+    logger.info(
+        f"Analyzing {len(posts)} posts for signals",
+        extra={"profile_id": profile_id},
+    )
+
+    llm_service = LLMService()
+    signals_created = 0
+
+    for post in posts:
+        try:
+            signal = await analyze_single_post(
+                post=post,
+                session=session,
+                llm_service=llm_service,
+            )
+            if signal:
+                signals_created += 1
+        except (LLMServiceError, ValueError) as e:
+            logger.warning(
+                f"Failed to analyze post: {e}",
+                extra={"post_id": str(post.id), "profile_id": profile_id},
+            )
+            continue
+
+    logger.info(
+        f"Created {signals_created} signals from profile posts",
+        extra={"profile_id": profile_id, "total_posts": len(posts)},
+    )
 
 
 async def crawl_profiles_job() -> None:
@@ -199,7 +263,8 @@ async def crawl_profiles_job() -> None:
                     if now < next_crawl:
                         continue
 
-                await crawl_single_profile(profile, session)
+                # Skip LLM analysis in batch job - let analyze_posts_job handle it
+                await crawl_single_profile(profile, session, run_llm_analysis=False)
 
             except (LinkedInScraperError, ValueError):
                 logger.exception(
