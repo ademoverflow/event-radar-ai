@@ -4,7 +4,7 @@
 
 ## Overview
 
-Integrated Phantombuster API for LinkedIn scraping. Created services for API communication and LinkedIn data extraction, plus background jobs for automated crawling.
+Integrated Phantombuster API for LinkedIn scraping. Created services for API communication and LinkedIn data extraction, plus background jobs for automated crawling. Session credentials (li_at cookie and user agent) are loaded from environment variables.
 
 ## Services Created
 
@@ -31,6 +31,53 @@ class PhantombusterClient:
         timeout_seconds: int = 300,
         poll_interval_seconds: int = 10,
     ) -> AgentOutput
+
+    # Agent management methods
+    async def fetch_agent(self, agent_id: str) -> AgentDetails
+    async def update_agent_argument(self, agent_id: str, argument: dict) -> None
+    async def get_agent_status(self, agent_id: str) -> AgentStatus
+    async def fetch_all_agents(self) -> list[AgentSummary]
+    async def validate_profile_posts_phantom(self, agent_id: str) -> ValidationResult
+```
+
+**Data Classes:**
+
+```python
+@dataclass
+class AgentOutput:
+    container_id: str
+    status: str
+    output: str | None
+    result_object: list[dict[str, Any]] | dict[str, Any] | None
+
+@dataclass
+class AgentDetails:
+    id: str
+    name: str
+    script_id: str
+    launch_type: str
+    last_run_at: datetime | None
+    argument: dict[str, Any]
+
+@dataclass
+class AgentStatus:
+    is_running: bool
+    last_status: str
+    last_end_time: datetime | None
+    time_left_seconds: int
+
+@dataclass
+class AgentSummary:
+    id: str
+    name: str
+    script_id: str
+
+@dataclass
+class ValidationResult:
+    is_valid: bool
+    has_session_cookie: bool
+    missing_config: list[str]
+    warnings: list[str]
 ```
 
 **Key Features:**
@@ -39,6 +86,7 @@ class PhantombusterClient:
 - Polling mechanism for agent completion
 - Timeout handling with `PhantombusterTimeoutError`
 - Error handling with `PhantombusterAgentError`
+- Agent management (fetch, update, validate)
 
 ### LinkedInScraper
 
@@ -50,7 +98,7 @@ High-level service for LinkedIn data extraction.
 class LinkedInScraper:
     def __init__(
         self,
-        api_key: str | None = None,
+        phantombuster_client: PhantombusterClient | None = None,
         profile_posts_agent_id: str | None = None,
         search_posts_agent_id: str | None = None,
     )
@@ -59,6 +107,8 @@ class LinkedInScraper:
         self,
         profile_url: str,
         max_posts: int = 20,
+        session_cookie: str | None = None,
+        user_agent: str | None = None,
     ) -> list[LinkedInPostData]
 
     async def scrape_search_posts(
@@ -67,6 +117,8 @@ class LinkedInScraper:
         *,
         is_hashtag: bool = False,
         max_posts: int = 20,
+        session_cookie: str | None = None,
+        user_agent: str | None = None,
     ) -> list[LinkedInPostData]
 ```
 
@@ -80,22 +132,27 @@ class LinkedInPostData:
     author_url: str
     content: str
     posted_at: datetime | None
+    likes_count: int
+    comments_count: int
     raw_data: dict[str, Any]
 
 @dataclass
 class LinkedInProfileData:
     profile_url: str
-    name: str
+    full_name: str
     headline: str | None
-    description: str | None
+    company: str | None
+    location: str | None
     raw_data: dict[str, Any]
 ```
 
 **Key Features:**
-- Parses various Phantombuster response formats
-- Handles both list and dict result structures
-- Extracts post IDs from multiple possible fields
+- Session cookie and user agent injection via parameters
+- Parses various Phantombuster response formats (list or dict)
+- Extracts post IDs from `postUrl` (urn:li:activity format)
+- Handles `author` field as string or dict
 - Parses dates from Unix timestamps and ISO strings
+- Extracts engagement counts (likes, comments)
 - Graceful error handling per post
 
 ## Background Jobs
@@ -112,30 +169,25 @@ async def crawl_profiles_job() -> None:
 ```
 
 **Logic:**
-1. Skip if Phantombuster API key or agent ID not configured
+1. Skip if Phantombuster API key, agent ID, or LinkedIn session cookie not configured
 2. Query profiles where:
    - `is_active == True`
    - `last_crawled_at IS NULL` OR `last_crawled_at < now - 1 hour`
 3. For each profile, check if `crawl_frequency_hours` has elapsed
-4. Scrape posts and store new ones
-5. Update `last_crawled_at` timestamp
+4. Scrape posts with session cookie and user agent from settings
+5. Store new posts and update `last_crawled_at` timestamp
 
 ### crawl_searches_job
 
-Runs every **30 minutes** to check for searches due for crawling.
+Runs every **30 minutes** - currently disabled (placeholder).
 
 ```python
 async def crawl_searches_job() -> None:
-    """Background job to search LinkedIn for keyword/hashtag matches."""
-```
+    """Background job to search LinkedIn for keyword/hashtag matches.
 
-**Logic:**
-1. Skip if Phantombuster API key or agent ID not configured
-2. Query searches where:
-   - `is_active == True`
-   - `last_crawled_at IS NULL` OR `last_crawled_at < now - 1 hour`
-3. For each search, scrape posts (keyword or hashtag based on `search_type`)
-4. Store new posts and update `last_crawled_at`
+    Note: Search crawling is disabled until a search posts agent is configured.
+    """
+```
 
 ### Helper Functions
 
@@ -161,6 +213,25 @@ Added session factory for background jobs:
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 ```
 
+## Settings
+
+**File:** `core/src/core/settings.py`
+
+```python
+class Settings(BaseSettings):
+    # LinkedIn scraper settings (Phantombuster)
+    phantombuster_api_key: str = ""
+    phantombuster_profile_posts_agent_id: str = ""
+
+    # LinkedIn session credentials (from browser DevTools)
+    linkedin_session_cookie: str
+    linkedin_user_agent: str
+
+    # Crawling settings
+    default_crawl_frequency_hours: int = 24
+    max_posts_per_crawl: int = 20
+```
+
 ## Exception Hierarchy
 
 ```
@@ -177,43 +248,100 @@ LinkedInScraperError (base)
 | File | Action |
 |------|--------|
 | `core/src/core/services/__init__.py` | Created - exports all services |
-| `core/src/core/services/phantombuster.py` | Created - API client |
-| `core/src/core/services/linkedin_scraper.py` | Created - scraper service |
-| `core/src/core/scheduler/jobs.py` | Updated - added crawl jobs |
+| `core/src/core/services/phantombuster.py` | Created - API client with agent management |
+| `core/src/core/services/linkedin_scraper.py` | Created - scraper service with cookie injection |
+| `core/src/core/scheduler/jobs.py` | Updated - crawl jobs using settings for credentials |
 | `core/src/core/database.py` | Updated - added session factory |
+| `core/src/core/settings.py` | Updated - added LinkedIn credentials settings |
 
 ## Environment Variables Required
 
 ```env
+# Phantombuster API
 PHANTOMBUSTER_API_KEY=your_api_key
-PHANTOMBUSTER_PROFILE_POSTS_AGENT_ID=your_profile_agent_id
-PHANTOMBUSTER_SEARCH_POSTS_AGENT_ID=your_search_agent_id
+PHANTOMBUSTER_PROFILE_POSTS_AGENT_ID=your_agent_id
+
+# LinkedIn session credentials (from browser DevTools)
+# li_at cookie: Application -> Cookies -> linkedin.com -> li_at
+LINKEDIN_SESSION_COOKIE=your_li_at_cookie
+# User-Agent: Network tab -> any request -> Headers -> User-Agent
+LINKEDIN_USER_AGENT=Mozilla/5.0...
+
+# Crawling settings
+DEFAULT_CRAWL_FREQUENCY_HOURS=24
+MAX_POSTS_PER_CRAWL=20
+```
+
+## Setup Instructions
+
+### 1. Create PhantomBuster Phantom
+
+1. Go to [phantombuster.com](https://phantombuster.com)
+2. Create a new "LinkedIn Profile Posts Extractor" phantom
+3. Copy the Agent ID from the URL (e.g., `4678091899725080`)
+
+### 2. Get LinkedIn Credentials
+
+1. Open LinkedIn in your browser
+2. Open DevTools (F12)
+3. **li_at cookie:** Application -> Cookies -> linkedin.com -> copy `li_at` value
+4. **User-Agent:** Network tab -> click any request -> Headers -> copy `User-Agent` value
+
+### 3. Configure Environment
+
+Add to your `.env` file:
+```env
+PHANTOMBUSTER_API_KEY=your_api_key
+PHANTOMBUSTER_PROFILE_POSTS_AGENT_ID=your_agent_id
+LINKEDIN_SESSION_COOKIE=AQE...
+LINKEDIN_USER_AGENT=Mozilla/5.0...
 ```
 
 ## Usage Example
 
 ```python
-from core.services import LinkedInScraper
+from core.services import LinkedInScraper, PhantombusterClient
 
-scraper = LinkedInScraper()
+# Using settings (recommended for background jobs)
+scraper = LinkedInScraper(
+    profile_posts_agent_id="your_agent_id"
+)
 
-# Scrape profile posts
+# Scrape profile posts with cookie injection
 posts = await scraper.scrape_profile_posts(
     profile_url="https://linkedin.com/in/someone",
     max_posts=10,
+    session_cookie="your_li_at_cookie",
+    user_agent="Mozilla/5.0...",
 )
 
-# Search posts by keyword
-posts = await scraper.scrape_search_posts(
-    search_term="AI conference",
-    is_hashtag=False,
-    max_posts=20,
-)
-
-# Search posts by hashtag
-posts = await scraper.scrape_search_posts(
-    search_term="TechEvent2026",
-    is_hashtag=True,
-    max_posts=20,
-)
+for post in posts:
+    print(f"{post.author_name}: {post.content[:100]}")
+    print(f"  Likes: {post.likes_count}, Comments: {post.comments_count}")
 ```
+
+## Test Script
+
+**File:** `test_phantombuster.py`
+
+```bash
+# Basic API test
+uv run python test_phantombuster.py
+
+# Scraping test (consumes PhantomBuster time)
+export PHANTOMBUSTER_API_KEY="your_key"
+export PHANTOMBUSTER_PROFILE_POSTS_AGENT_ID="your_agent_id"
+export LINKEDIN_SESSION_COOKIE="your_li_at"
+export LINKEDIN_USER_AGENT="Mozilla/5.0..."
+uv run python test_phantombuster.py --scrape https://linkedin.com/in/profile
+```
+
+## Limitations & Notes
+
+1. **Phantom Creation:** PhantomBuster API does not support creating phantoms programmatically. User must create the phantom once in the UI, then we manage everything else via API.
+
+2. **Cookie Expiration:** LinkedIn li_at cookies expire periodically. Users need to manually refresh them when scraping fails.
+
+3. **Search Crawling:** Not yet implemented - requires a separate PhantomBuster "LinkedIn Search Posts" phantom.
+
+4. **Rate Limits:** PhantomBuster has execution time limits based on plan. Monitor `time_left` from API responses.
