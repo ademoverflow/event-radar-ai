@@ -7,7 +7,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from core import __version__
-from core.routers import auth_router, health_router, users_router
+from core.routers import (
+    auth_router,
+    dashboard_router,
+    health_router,
+    profiles_router,
+    searches_router,
+    signals_router,
+    users_router,
+)
 from core.scheduler import scheduler, start_scheduler, stop_scheduler
 from core.scheduler.jobs import register_jobs
 from core.settings import get_settings
@@ -57,3 +65,7 @@ app.add_middleware(
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(users_router)
+app.include_router(profiles_router)
+app.include_router(searches_router)
+app.include_router(signals_router)
+app.include_router(dashboard_router)
