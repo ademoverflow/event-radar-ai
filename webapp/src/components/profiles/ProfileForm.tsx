@@ -71,36 +71,38 @@ export function ProfileForm({
 				</DialogHeader>
 				<form onSubmit={handleSubmit}>
 					<div className="grid gap-4 py-4">
-						<div className="grid gap-2">
-							<Label htmlFor={`${id}-url`}>LinkedIn URL</Label>
-							<Input
-								id={`${id}-url`}
-								type="url"
-								placeholder="https://www.linkedin.com/company/example"
-								value={url}
-								onChange={(e) => setUrl(e.target.value)}
-								required
-								disabled={isEditing}
-							/>
-						</div>
-						<div className="grid gap-2">
-							<Label htmlFor={`${id}-type`}>Profile Type</Label>
-							<Select
-								value={profileType}
-								onValueChange={(v) =>
-									setProfileType(v as "company" | "personal")
-								}
-								disabled={isEditing}
-							>
-								<SelectTrigger id={`${id}-type`}>
-									<SelectValue />
-								</SelectTrigger>
-								<SelectContent>
-									<SelectItem value="company">Company</SelectItem>
-									<SelectItem value="personal">Personal</SelectItem>
-								</SelectContent>
-							</Select>
-						</div>
+						{!isEditing && (
+							<>
+								<div className="grid gap-2">
+									<Label htmlFor={`${id}-url`}>LinkedIn URL</Label>
+									<Input
+										id={`${id}-url`}
+										type="url"
+										placeholder="https://www.linkedin.com/company/example"
+										value={url}
+										onChange={(e) => setUrl(e.target.value)}
+										required
+									/>
+								</div>
+								<div className="grid gap-2">
+									<Label htmlFor={`${id}-type`}>Profile Type</Label>
+									<Select
+										value={profileType}
+										onValueChange={(v) =>
+											setProfileType(v as "company" | "personal")
+										}
+									>
+										<SelectTrigger id={`${id}-type`}>
+											<SelectValue />
+										</SelectTrigger>
+										<SelectContent>
+											<SelectItem value="company">Company</SelectItem>
+											<SelectItem value="personal">Personal</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							</>
+						)}
 						<div className="grid gap-2">
 							<Label htmlFor={`${id}-name`}>Display Name</Label>
 							<Input
