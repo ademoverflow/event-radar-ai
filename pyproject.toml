@@ -56,10 +56,6 @@ plugins = ["pydantic.mypy"]
 pretty = true
 show_column_numbers = true
 
-[[tool.mypy.overrides]]
-module = "core.routers.*"
-disable_error_code = ["arg-type", "attr-defined", "call-overload", "union-attr"]
-
 [tool.uv.workspace]
 members = ["core"]
 

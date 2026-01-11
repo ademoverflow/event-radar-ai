@@ -4,8 +4,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col, select
 
 from core.database import get_session
 from core.middlewares.user import get_current_user
@@ -44,10 +45,10 @@ async def list_searches(
 ) -> SearchListResponse:
     """List all saved searches for the current user."""
     # Build base query
-    query = select(LinkedInSearch).where(LinkedInSearch.user_id == current_user.id)
+    query = select(LinkedInSearch).where(col(LinkedInSearch.user_id) == current_user.id)
 
     if is_active is not None:
-        query = query.where(LinkedInSearch.is_active == is_active)
+        query = query.where(col(LinkedInSearch.is_active) == is_active)
 
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
@@ -55,7 +56,7 @@ async def list_searches(
     total = total_result.scalar() or 0
 
     # Get paginated results
-    query = query.order_by(LinkedInSearch.created_at.desc())
+    query = query.order_by(col(LinkedInSearch.created_at).desc())
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
     searches = result.scalars().all()
@@ -94,8 +95,8 @@ async def get_search(
 ) -> SearchResponse:
     """Get a specific search by ID."""
     query = select(LinkedInSearch).where(
-        LinkedInSearch.id == search_id,
-        LinkedInSearch.user_id == current_user.id,
+        col(LinkedInSearch.id) == search_id,
+        col(LinkedInSearch.user_id) == current_user.id,
     )
     result = await session.execute(query)
     search = result.scalar_one_or_none()
@@ -118,8 +119,8 @@ async def update_search(
 ) -> SearchResponse:
     """Update a search."""
     query = select(LinkedInSearch).where(
-        LinkedInSearch.id == search_id,
-        LinkedInSearch.user_id == current_user.id,
+        col(LinkedInSearch.id) == search_id,
+        col(LinkedInSearch.user_id) == current_user.id,
     )
     result = await session.execute(query)
     search = result.scalar_one_or_none()
@@ -147,8 +148,8 @@ async def delete_search(
 ) -> None:
     """Delete a search."""
     query = select(LinkedInSearch).where(
-        LinkedInSearch.id == search_id,
-        LinkedInSearch.user_id == current_user.id,
+        col(LinkedInSearch.id) == search_id,
+        col(LinkedInSearch.user_id) == current_user.id,
     )
     result = await session.execute(query)
     search = result.scalar_one_or_none()
@@ -171,8 +172,8 @@ async def trigger_crawl(
 ) -> dict[str, str]:
     """Trigger a manual crawl for a search."""
     query = select(LinkedInSearch).where(
-        LinkedInSearch.id == search_id,
-        LinkedInSearch.user_id == current_user.id,
+        col(LinkedInSearch.id) == search_id,
+        col(LinkedInSearch.user_id) == current_user.id,
     )
     result = await session.execute(query)
     search = result.scalar_one_or_none()

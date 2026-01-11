@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import col, select
 
 from core.database import get_session
 from core.models.user import User
@@ -26,7 +26,7 @@ async def login(
 ) -> JSONResponse:
     """Login with email and password, set HTTP-only cookie."""
     # Find user by email
-    statement = select(User).where(User.email == credentials.email).limit(1)
+    statement = select(User).where(col(User.email) == credentials.email).limit(1)
     result = await session.execute(statement)
     user = result.scalar_one_or_none()
 

@@ -3,8 +3,9 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col, select
 
 from core.database import get_session
 from core.middlewares.user import get_current_user
@@ -27,62 +28,60 @@ async def get_dashboard_summary(
     """Get dashboard summary statistics."""
     # Profile counts
     total_profiles_query = select(func.count()).where(
-        LinkedInMonitoredProfile.user_id == current_user.id
+        col(LinkedInMonitoredProfile.user_id) == current_user.id
     )
     total_profiles = (await session.execute(total_profiles_query)).scalar() or 0
 
     active_profiles_query = select(func.count()).where(
-        LinkedInMonitoredProfile.user_id == current_user.id,
-        LinkedInMonitoredProfile.is_active == True,  # noqa: E712
+        col(LinkedInMonitoredProfile.user_id) == current_user.id,
+        col(LinkedInMonitoredProfile.is_active) == True,  # noqa: E712
     )
     active_profiles = (await session.execute(active_profiles_query)).scalar() or 0
 
     # Search counts
     total_searches_query = select(func.count()).where(
-        LinkedInSearch.user_id == current_user.id
+        col(LinkedInSearch.user_id) == current_user.id
     )
     total_searches = (await session.execute(total_searches_query)).scalar() or 0
 
     active_searches_query = select(func.count()).where(
-        LinkedInSearch.user_id == current_user.id,
-        LinkedInSearch.is_active == True,  # noqa: E712
+        col(LinkedInSearch.user_id) == current_user.id,
+        col(LinkedInSearch.is_active) == True,  # noqa: E712
     )
     active_searches = (await session.execute(active_searches_query)).scalar() or 0
 
     # Post count (posts from user's profiles and searches)
-    profile_ids_query = select(LinkedInMonitoredProfile.id).where(
-        LinkedInMonitoredProfile.user_id == current_user.id
+    profile_ids_query = select(col(LinkedInMonitoredProfile.id)).where(
+        col(LinkedInMonitoredProfile.user_id) == current_user.id
     )
-    search_ids_query = select(LinkedInSearch.id).where(
-        LinkedInSearch.user_id == current_user.id
+    search_ids_query = select(col(LinkedInSearch.id)).where(
+        col(LinkedInSearch.user_id) == current_user.id
     )
 
     total_posts_query = select(func.count()).where(
-        (LinkedInPost.profile_id.in_(profile_ids_query))
-        | (LinkedInPost.search_id.in_(search_ids_query))
+        (col(LinkedInPost.profile_id).in_(profile_ids_query))
+        | (col(LinkedInPost.search_id).in_(search_ids_query))
     )
     total_posts = (await session.execute(total_posts_query)).scalar() or 0
 
     # Signal counts
-    total_signals_query = select(func.count()).where(
-        LinkedInSignal.user_id == current_user.id
-    )
+    total_signals_query = select(func.count()).where(col(LinkedInSignal.user_id) == current_user.id)
     total_signals = (await session.execute(total_signals_query)).scalar() or 0
 
     # Signals by type
     type_query = (
-        select(LinkedInSignal.event_type, func.count())
-        .where(LinkedInSignal.user_id == current_user.id)
-        .group_by(LinkedInSignal.event_type)
+        select(col(LinkedInSignal.event_type), func.count())
+        .where(col(LinkedInSignal.user_id) == current_user.id)
+        .group_by(col(LinkedInSignal.event_type))
     )
     type_result = await session.execute(type_query)
     signals_by_type = {row[0] or "unknown": row[1] for row in type_result.all()}
 
     # Signals by timing
     timing_query = (
-        select(LinkedInSignal.event_timing, func.count())
-        .where(LinkedInSignal.user_id == current_user.id)
-        .group_by(LinkedInSignal.event_timing)
+        select(col(LinkedInSignal.event_timing), func.count())
+        .where(col(LinkedInSignal.user_id) == current_user.id)
+        .group_by(col(LinkedInSignal.event_timing))
     )
     timing_result = await session.execute(timing_query)
     signals_by_timing = {row[0]: row[1] for row in timing_result.all()}
@@ -90,8 +89,8 @@ async def get_dashboard_summary(
     # Recent signals (last 5)
     recent_query = (
         select(LinkedInSignal)
-        .where(LinkedInSignal.user_id == current_user.id)
-        .order_by(LinkedInSignal.created_at.desc())
+        .where(col(LinkedInSignal.user_id) == current_user.id)
+        .order_by(col(LinkedInSignal.created_at).desc())
         .limit(5)
     )
     recent_result = await session.execute(recent_query)
@@ -99,7 +98,7 @@ async def get_dashboard_summary(
 
     recent_signals = []
     for signal in recent_signals_db:
-        post_query = select(LinkedInPost).where(LinkedInPost.id == signal.post_id)
+        post_query = select(LinkedInPost).where(col(LinkedInPost.id) == signal.post_id)
         post_result = await session.execute(post_query)
         post = post_result.scalar_one_or_none()
 

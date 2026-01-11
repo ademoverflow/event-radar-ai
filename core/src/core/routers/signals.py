@@ -5,8 +5,9 @@ from datetime import date
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col, select
 
 from core.database import get_session
 from core.middlewares.user import get_current_user
@@ -65,18 +66,18 @@ async def list_signals(
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> SignalListResponse:
     """List signals with optional filters."""
-    query = select(LinkedInSignal).where(LinkedInSignal.user_id == current_user.id)
+    query = select(LinkedInSignal).where(col(LinkedInSignal.user_id) == current_user.id)
 
     if event_type:
-        query = query.where(LinkedInSignal.event_type == event_type)
+        query = query.where(col(LinkedInSignal.event_type) == event_type)
     if event_timing:
-        query = query.where(LinkedInSignal.event_timing == event_timing)
+        query = query.where(col(LinkedInSignal.event_timing) == event_timing)
     if min_relevance is not None:
-        query = query.where(LinkedInSignal.relevance_score >= min_relevance)
+        query = query.where(col(LinkedInSignal.relevance_score) >= min_relevance)
     if from_date:
-        query = query.where(func.date(LinkedInSignal.created_at) >= from_date)
+        query = query.where(func.date(col(LinkedInSignal.created_at)) >= from_date)
     if to_date:
-        query = query.where(func.date(LinkedInSignal.created_at) <= to_date)
+        query = query.where(func.date(col(LinkedInSignal.created_at)) <= to_date)
 
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
@@ -84,7 +85,7 @@ async def list_signals(
     total = total_result.scalar() or 0
 
     # Get paginated results
-    query = query.order_by(LinkedInSignal.created_at.desc())
+    query = query.order_by(col(LinkedInSignal.created_at).desc())
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
     signals = result.scalars().all()
@@ -92,7 +93,7 @@ async def list_signals(
     # Fetch related posts
     signal_responses = []
     for signal in signals:
-        post_query = select(LinkedInPost).where(LinkedInPost.id == signal.post_id)
+        post_query = select(LinkedInPost).where(col(LinkedInPost.id) == signal.post_id)
         post_result = await session.execute(post_query)
         post = post_result.scalar_one_or_none()
         signal_responses.append(_signal_to_response(signal, post))
@@ -112,31 +113,31 @@ async def get_signal_stats(
 ) -> SignalStatsResponse:
     """Get signal statistics for the current user."""
     # Total signals
-    total_query = select(func.count()).where(LinkedInSignal.user_id == current_user.id)
+    total_query = select(func.count()).where(col(LinkedInSignal.user_id) == current_user.id)
     total_result = await session.execute(total_query)
     total_signals = total_result.scalar() or 0
 
     # Signals by type
     type_query = (
-        select(LinkedInSignal.event_type, func.count())
-        .where(LinkedInSignal.user_id == current_user.id)
-        .group_by(LinkedInSignal.event_type)
+        select(col(LinkedInSignal.event_type), func.count())
+        .where(col(LinkedInSignal.user_id) == current_user.id)
+        .group_by(col(LinkedInSignal.event_type))
     )
     type_result = await session.execute(type_query)
     signals_by_type = {row[0] or "unknown": row[1] for row in type_result.all()}
 
     # Signals by timing
     timing_query = (
-        select(LinkedInSignal.event_timing, func.count())
-        .where(LinkedInSignal.user_id == current_user.id)
-        .group_by(LinkedInSignal.event_timing)
+        select(col(LinkedInSignal.event_timing), func.count())
+        .where(col(LinkedInSignal.user_id) == current_user.id)
+        .group_by(col(LinkedInSignal.event_timing))
     )
     timing_result = await session.execute(timing_query)
     signals_by_timing = {row[0]: row[1] for row in timing_result.all()}
 
     # Average relevance
-    avg_query = select(func.avg(LinkedInSignal.relevance_score)).where(
-        LinkedInSignal.user_id == current_user.id
+    avg_query = select(func.avg(col(LinkedInSignal.relevance_score))).where(
+        col(LinkedInSignal.user_id) == current_user.id
     )
     avg_result = await session.execute(avg_query)
     average_relevance = avg_result.scalar() or 0.0
@@ -157,8 +158,8 @@ async def get_signal(
 ) -> SignalResponse:
     """Get a specific signal with its associated post."""
     query = select(LinkedInSignal).where(
-        LinkedInSignal.id == signal_id,
-        LinkedInSignal.user_id == current_user.id,
+        col(LinkedInSignal.id) == signal_id,
+        col(LinkedInSignal.user_id) == current_user.id,
     )
     result = await session.execute(query)
     signal = result.scalar_one_or_none()
@@ -170,7 +171,7 @@ async def get_signal(
         )
 
     # Fetch related post
-    post_query = select(LinkedInPost).where(LinkedInPost.id == signal.post_id)
+    post_query = select(LinkedInPost).where(col(LinkedInPost.id) == signal.post_id)
     post_result = await session.execute(post_query)
     post = post_result.scalar_one_or_none()
 

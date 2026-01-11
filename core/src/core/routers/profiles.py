@@ -4,8 +4,9 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlmodel import col, select
 
 from core.database import get_session
 from core.middlewares.user import get_current_user
@@ -47,11 +48,11 @@ async def list_profiles(
     """List all monitored profiles for the current user."""
     # Build base query
     query = select(LinkedInMonitoredProfile).where(
-        LinkedInMonitoredProfile.user_id == current_user.id
+        col(LinkedInMonitoredProfile.user_id) == current_user.id
     )
 
     if is_active is not None:
-        query = query.where(LinkedInMonitoredProfile.is_active == is_active)
+        query = query.where(col(LinkedInMonitoredProfile.is_active) == is_active)
 
     # Get total count
     count_query = select(func.count()).select_from(query.subquery())
@@ -59,7 +60,7 @@ async def list_profiles(
     total = total_result.scalar() or 0
 
     # Get paginated results
-    query = query.order_by(LinkedInMonitoredProfile.created_at.desc())
+    query = query.order_by(col(LinkedInMonitoredProfile.created_at).desc())
     query = query.offset(offset).limit(limit)
     result = await session.execute(query)
     profiles = result.scalars().all()
@@ -100,8 +101,8 @@ async def get_profile(
 ) -> ProfileResponse:
     """Get a specific profile by ID."""
     query = select(LinkedInMonitoredProfile).where(
-        LinkedInMonitoredProfile.id == profile_id,
-        LinkedInMonitoredProfile.user_id == current_user.id,
+        col(LinkedInMonitoredProfile.id) == profile_id,
+        col(LinkedInMonitoredProfile.user_id) == current_user.id,
     )
     result = await session.execute(query)
     profile = result.scalar_one_or_none()
@@ -124,8 +125,8 @@ async def update_profile(
 ) -> ProfileResponse:
     """Update a profile."""
     query = select(LinkedInMonitoredProfile).where(
-        LinkedInMonitoredProfile.id == profile_id,
-        LinkedInMonitoredProfile.user_id == current_user.id,
+        col(LinkedInMonitoredProfile.id) == profile_id,
+        col(LinkedInMonitoredProfile.user_id) == current_user.id,
     )
     result = await session.execute(query)
     profile = result.scalar_one_or_none()
@@ -153,8 +154,8 @@ async def delete_profile(
 ) -> None:
     """Delete a profile."""
     query = select(LinkedInMonitoredProfile).where(
-        LinkedInMonitoredProfile.id == profile_id,
-        LinkedInMonitoredProfile.user_id == current_user.id,
+        col(LinkedInMonitoredProfile.id) == profile_id,
+        col(LinkedInMonitoredProfile.user_id) == current_user.id,
     )
     result = await session.execute(query)
     profile = result.scalar_one_or_none()
@@ -177,8 +178,8 @@ async def trigger_crawl(
 ) -> dict[str, str]:
     """Trigger a manual crawl for a profile."""
     query = select(LinkedInMonitoredProfile).where(
-        LinkedInMonitoredProfile.id == profile_id,
-        LinkedInMonitoredProfile.user_id == current_user.id,
+        col(LinkedInMonitoredProfile.id) == profile_id,
+        col(LinkedInMonitoredProfile.user_id) == current_user.id,
     )
     result = await session.execute(query)
     profile = result.scalar_one_or_none()

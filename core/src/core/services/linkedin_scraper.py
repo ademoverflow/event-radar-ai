@@ -288,8 +288,11 @@ class LinkedInScraper:
         # Note: "author" can be a string or a dict depending on PhantomBuster phantom
         author_field = raw_post.get("author")
         author_from_field = (
-            author_field if isinstance(author_field, str) else
-            author_field.get("name") if isinstance(author_field, dict) else None
+            author_field
+            if isinstance(author_field, str)
+            else author_field.get("name")
+            if isinstance(author_field, dict)
+            else None
         )
         author_name = (
             raw_post.get("authorName")
@@ -313,10 +316,7 @@ class LinkedInScraper:
 
         # Extract content
         content = (
-            raw_post.get("postContent")
-            or raw_post.get("text")
-            or raw_post.get("content")
-            or ""
+            raw_post.get("postContent") or raw_post.get("text") or raw_post.get("content") or ""
         )
 
         # Parse posted date
@@ -338,10 +338,7 @@ class LinkedInScraper:
 
         # Extract engagement counts - handle various field names
         likes_count = (
-            raw_post.get("likeCount")
-            or raw_post.get("likesCount")
-            or raw_post.get("likes")
-            or 0
+            raw_post.get("likeCount") or raw_post.get("likesCount") or raw_post.get("likes") or 0
         )
         comments_count = (
             raw_post.get("commentCount")
