@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import date  # noqa: TC003 - Required at runtime for Pydantic model
+from pathlib import Path
 from typing import Any, Literal
 
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
@@ -15,6 +16,15 @@ from core.settings import get_settings
 logger = get_logger(__name__)
 settings = get_settings()
 
+# Load prompt from markdown file
+_PROMPTS_DIR = Path(__file__).parent / "prompts"
+
+
+def _load_prompt(filename: str) -> str:
+    """Load a prompt from the prompts directory."""
+    prompt_path = _PROMPTS_DIR / filename
+    return prompt_path.read_text(encoding="utf-8").strip()
+
 
 # Type alias for event types
 EventType = Literal[
@@ -24,8 +34,11 @@ EventType = Literal[
     "anniversary",
     "trade_show",
     "conference",
+    "congress",
+    "general_assembly",
     "webinar",
     "networking",
+    "corporate_event",
     "other",
 ]
 
@@ -35,27 +48,8 @@ EventTiming = Literal["past", "future", "unknown"]
 # Default OpenAI model for signal extraction
 OPENAI_MODEL = "gpt-5.2"
 
-# System prompt for LLM signal extraction
-SIGNAL_EXTRACTION_SYSTEM_PROMPT = """\
-You are an event detection specialist analyzing LinkedIn posts in French or English.
-Your task is to identify business events and extract structured information.
-
-Look for:
-- Seminars, webinars, conferences
-- Trade shows, conventions, exhibitions
-- Product launches, announcements
-- Company anniversaries, milestones
-- Networking events, meetups
-
-Extract:
-- Event type and timing (past/future)
-- Explicit or inferred dates
-- Companies, brands, partners mentioned
-- Decision-makers, organizers named
-- Commercial relevance score (0-1)
-
-Respond in the same language as the post content.
-If no event is detected, set is_event_related to false and provide a low relevance_score."""
+# System prompt for LLM signal extraction (loaded from prompts/signal_extraction.md)
+SIGNAL_EXTRACTION_SYSTEM_PROMPT = _load_prompt("signal_extraction.md")
 
 # JSON Schema for signal extraction response
 SIGNAL_EXTRACTION_JSON_SCHEMA: dict[str, Any] = {
@@ -77,8 +71,11 @@ SIGNAL_EXTRACTION_JSON_SCHEMA: dict[str, Any] = {
                     "anniversary",
                     "trade_show",
                     "conference",
+                    "congress",
+                    "general_assembly",
                     "webinar",
                     "networking",
+                    "corporate_event",
                     "other",
                     None,
                 ],

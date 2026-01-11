@@ -1,4 +1,5 @@
 import {
+	Briefcase,
 	Building2,
 	Calendar,
 	CalendarCheck,
@@ -6,12 +7,14 @@ import {
 	CircleHelp,
 	ExternalLink,
 	Gift,
+	Landmark,
 	Mic2,
 	Presentation,
 	Sparkles,
 	Store,
 	Users,
 	Video,
+	Vote,
 } from "lucide-react";
 import type { Signal } from "@/api/signals";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +61,18 @@ const EVENT_TYPE_CONFIG: Record<
 		icon: Mic2,
 		description: "Professional meeting with presentations and discussions",
 	},
+	congress: {
+		label: "Congress",
+		icon: Landmark,
+		description:
+			"Large professional gathering, often annual, for an industry or organization",
+	},
+	general_assembly: {
+		label: "General Assembly",
+		icon: Vote,
+		description:
+			"Annual meeting of company shareholders or organization members",
+	},
 	webinar: {
 		label: "Webinar",
 		icon: Video,
@@ -67,6 +82,12 @@ const EVENT_TYPE_CONFIG: Record<
 		label: "Networking",
 		icon: Users,
 		description: "Event focused on building professional connections",
+	},
+	corporate_event: {
+		label: "Corporate Event",
+		icon: Briefcase,
+		description:
+			"Internal company event (team building, kick-off, company meeting)",
 	},
 	other: {
 		label: "Other Event",
