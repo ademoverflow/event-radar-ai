@@ -3,16 +3,14 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Literal
+from datetime import date  # noqa: TC003 - Required at runtime for Pydantic model
+from typing import Any, Literal
 
 from openai import APIConnectionError, APIError, AsyncOpenAI, RateLimitError
 from pydantic import BaseModel, Field, ValidationError
 
 from core.logger import get_logger
 from core.settings import get_settings
-
-if TYPE_CHECKING:
-    from datetime import date
 
 logger = get_logger(__name__)
 settings = get_settings()

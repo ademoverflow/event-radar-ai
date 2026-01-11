@@ -32,10 +32,10 @@ export interface ProfileUpdate {
 	is_active?: boolean;
 }
 
-export interface ProfileCrawlResponse {
+export interface ProfileCrawlQueuedResponse {
 	message: string;
-	posts_found: number;
-	profile: Profile;
+	profile_id: string;
+	profile_display_name: string;
 }
 
 export const profilesApi = {
@@ -71,7 +71,7 @@ export const profilesApi = {
 		}),
 
 	triggerCrawl: (id: string) =>
-		apiClient<ProfileCrawlResponse>(`/profiles/${id}/crawl`, {
+		apiClient<ProfileCrawlQueuedResponse>(`/profiles/${id}/crawl`, {
 			method: "POST",
 		}),
 };

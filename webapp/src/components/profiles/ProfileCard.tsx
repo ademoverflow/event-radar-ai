@@ -1,4 +1,12 @@
-import { Building2, Clock, Pencil, Play, Trash2, User } from "lucide-react";
+import {
+	Building2,
+	Clock,
+	Loader2,
+	Pencil,
+	Play,
+	Trash2,
+	User,
+} from "lucide-react";
 import type { Profile } from "@/api/profiles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +19,7 @@ interface ProfileCardProps {
 	onDelete: (profile: Profile) => void;
 	onToggleActive: (profile: Profile) => void;
 	onTriggerCrawl: (profile: Profile) => void;
+	isCrawling?: boolean;
 }
 
 export function ProfileCard({
@@ -19,6 +28,7 @@ export function ProfileCard({
 	onDelete,
 	onToggleActive,
 	onTriggerCrawl,
+	isCrawling = false,
 }: ProfileCardProps) {
 	const ProfileIcon = profile.profile_type === "company" ? Building2 : User;
 
@@ -70,8 +80,13 @@ export function ProfileCard({
 							size="icon"
 							onClick={() => onTriggerCrawl(profile)}
 							title="Trigger crawl"
+							disabled={isCrawling}
 						>
-							<Play className="h-4 w-4" />
+							{isCrawling ? (
+								<Loader2 className="h-4 w-4 animate-spin" />
+							) : (
+								<Play className="h-4 w-4" />
+							)}
 						</Button>
 						<Button
 							variant="ghost"

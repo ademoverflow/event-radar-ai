@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { StrictMode } from "react";
 import ReactDOM from "react-dom/client";
+import { Toaster } from "sonner";
 import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provider.tsx";
 
 import "./styles.css";
@@ -100,6 +101,7 @@ if (rootElement && !rootElement.innerHTML) {
 	root.render(
 		<StrictMode>
 			<TanStackQueryProvider.Provider {...TanStackQueryProviderContext}>
+				<Toaster position="top-right" richColors closeButton />
 				<RouterProvider router={router} />
 			</TanStackQueryProvider.Provider>
 		</StrictMode>,

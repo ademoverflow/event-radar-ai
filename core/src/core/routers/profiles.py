@@ -3,24 +3,29 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, status
 from sqlalchemy import func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import col, select
 
-from core.database import get_session
+from core.database import async_session_factory, get_session
+from core.logger import get_logger
 from core.middlewares.user import get_current_user
 from core.models.linkedin_profile import LinkedInMonitoredProfile
 from core.models.user import User
 from core.scheduler.jobs import crawl_single_profile
 from core.schemas.profiles import (
-    ProfileCrawlResponse,
+    ProfileCrawlQueuedResponse,
     ProfileCreate,
     ProfileListResponse,
     ProfileResponse,
     ProfileUpdate,
 )
 from core.services.linkedin_scraper import LinkedInScraperError
+from core.settings import get_settings
+
+logger = get_logger(__name__)
+settings = get_settings()
 
 profiles_router = APIRouter(prefix="/profiles", tags=["Profiles"])
 
@@ -173,13 +178,56 @@ async def delete_profile(
     await session.commit()
 
 
-@profiles_router.post("/{profile_id}/crawl")
+async def _background_crawl_profile(profile_id: str) -> None:
+    """Background task to crawl a profile with its own database session.
+
+    This function creates its own session because the FastAPI request session
+    is closed when the request completes. Background tasks must manage their
+    own database connections.
+
+    Args:
+        profile_id: The UUID of the profile to crawl (as string)
+
+    """
+    async with async_session_factory() as session:
+        query = select(LinkedInMonitoredProfile).where(
+            col(LinkedInMonitoredProfile.id) == profile_id
+        )
+        result = await session.execute(query)
+        profile = result.scalar_one_or_none()
+
+        if not profile:
+            logger.warning(
+                f"Profile {profile_id} not found for background crawl",
+                extra={"profile_id": profile_id},
+            )
+            return
+
+        try:
+            posts_found = await crawl_single_profile(profile, session)
+            logger.info(
+                f"Background crawl completed for {profile.display_name}",
+                extra={"profile_id": profile_id, "posts_found": posts_found},
+            )
+        except (LinkedInScraperError, ValueError):
+            logger.exception(
+                f"Background crawl failed for {profile.display_name}",
+                extra={"profile_id": profile_id},
+            )
+
+
+@profiles_router.post("/{profile_id}/crawl", status_code=status.HTTP_202_ACCEPTED)
 async def trigger_crawl(
     profile_id: uuid.UUID,
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> ProfileCrawlResponse:
-    """Trigger a manual crawl for a profile using Phantombuster."""
+    background_tasks: BackgroundTasks,
+) -> ProfileCrawlQueuedResponse:
+    """Queue a manual crawl for a profile using Phantombuster.
+
+    This endpoint validates the profile and configuration, then queues the crawl
+    as a background task. The response is returned immediately with HTTP 202.
+    """
     query = select(LinkedInMonitoredProfile).where(
         col(LinkedInMonitoredProfile.id) == profile_id,
         col(LinkedInMonitoredProfile.user_id) == current_user.id,
@@ -193,22 +241,30 @@ async def trigger_crawl(
             detail="Profile not found",
         )
 
-    try:
-        posts_found = await crawl_single_profile(profile, session)
-        await session.refresh(profile)
-
-        return ProfileCrawlResponse(
-            message=f"Successfully crawled {profile.display_name}",
-            posts_found=posts_found,
-            profile=_profile_to_response(profile),
-        )
-    except ValueError as e:
+    # Validate configuration before queueing
+    if not settings.phantombuster_api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=str(e),
-        ) from e
-    except LinkedInScraperError as e:
+            detail="Phantombuster API key not configured",
+        )
+
+    if not settings.phantombuster_profile_posts_agent_id:
         raise HTTPException(
-            status_code=status.HTTP_502_BAD_GATEWAY,
-            detail=f"Failed to crawl profile: {e}",
-        ) from e
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Profile posts agent ID not configured",
+        )
+
+    if not settings.linkedin_session_cookie:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="LinkedIn session cookie not configured",
+        )
+
+    # Queue the background task
+    background_tasks.add_task(_background_crawl_profile, str(profile.id))
+
+    return ProfileCrawlQueuedResponse(
+        message=f"Crawl job queued for {profile.display_name}",
+        profile_id=profile.id,
+        profile_display_name=profile.display_name,
+    )

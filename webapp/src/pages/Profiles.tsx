@@ -31,6 +31,9 @@ export function ProfilesPage() {
 	const [isFormOpen, setIsFormOpen] = useState(false);
 	const [editingProfile, setEditingProfile] = useState<Profile | undefined>();
 	const [deletingProfile, setDeletingProfile] = useState<Profile | undefined>();
+	const [crawlingProfileId, setCrawlingProfileId] = useState<string | null>(
+		null,
+	);
 
 	const handleCreate = (formData: ProfileCreate) => {
 		createProfile.mutate(formData, {
@@ -83,7 +86,12 @@ export function ProfilesPage() {
 	};
 
 	const handleTriggerCrawl = (profile: Profile) => {
-		triggerCrawl.mutate(profile.id);
+		setCrawlingProfileId(profile.id);
+		triggerCrawl.mutate(profile.id, {
+			onSettled: () => {
+				setCrawlingProfileId(null);
+			},
+		});
 	};
 
 	if (isLoading) {
@@ -141,6 +149,7 @@ export function ProfilesPage() {
 							onDelete={handleDelete}
 							onToggleActive={handleToggleActive}
 							onTriggerCrawl={handleTriggerCrawl}
+							isCrawling={crawlingProfileId === profile.id}
 						/>
 					))}
 				</div>

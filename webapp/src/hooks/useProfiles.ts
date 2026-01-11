@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
 	type ProfileCreate,
 	type ProfileUpdate,
@@ -58,7 +59,23 @@ export function useDeleteProfile() {
 }
 
 export function useTriggerProfileCrawl() {
+	const queryClient = useQueryClient();
 	return useMutation({
 		mutationFn: (id: string) => profilesApi.triggerCrawl(id),
+		onSuccess: (data) => {
+			toast.success("Crawl Started", {
+				description: data.message,
+				duration: 4000,
+			});
+			// Invalidate profiles to refresh last_crawled_at after background job completes
+			// This won't show immediate update since the job runs async, but helps with subsequent refreshes
+			queryClient.invalidateQueries({ queryKey: PROFILES_QUERY_KEY });
+		},
+		onError: (error: Error) => {
+			toast.error("Failed to start crawl", {
+				description: error.message || "An unexpected error occurred",
+				duration: 5000,
+			});
+		},
 	});
 }

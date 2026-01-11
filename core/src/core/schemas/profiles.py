@@ -53,3 +53,11 @@ class ProfileCrawlResponse(BaseModel):
     message: str
     posts_found: int
     profile: ProfileResponse
+
+
+class ProfileCrawlQueuedResponse(BaseModel):
+    """Schema for async crawl queue response."""
+
+    message: str
+    profile_id: uuid.UUID
+    profile_display_name: str
