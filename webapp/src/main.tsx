@@ -2,7 +2,6 @@ import {
 	createRootRoute,
 	createRoute,
 	createRouter,
-	Outlet,
 	RouterProvider,
 } from "@tanstack/react-router";
 import { StrictMode } from "react";
@@ -11,30 +10,44 @@ import * as TanStackQueryProvider from "./integrations/tanstack-query/root-provi
 
 import "./styles.css";
 
-import App from "./App.tsx";
+import { Layout } from "./components/Layout.tsx";
+import { ProtectedRoute } from "./components/ProtectedRoute.tsx";
 import About from "./pages/About.tsx";
+import { Dashboard } from "./pages/Dashboard.tsx";
+import { LoginPage } from "./pages/Login.tsx";
 
 const rootRoute = createRootRoute({
-	component: () => (
-		<>
-			<Outlet />
-		</>
-	),
+	component: Layout,
+});
+
+const loginRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	path: "/login",
+	component: LoginPage,
+});
+
+const protectedRoute = createRoute({
+	getParentRoute: () => rootRoute,
+	id: "protected",
+	component: ProtectedRoute,
 });
 
 const indexRoute = createRoute({
-	getParentRoute: () => rootRoute,
+	getParentRoute: () => protectedRoute,
 	path: "/",
-	component: App,
+	component: Dashboard,
 });
 
 const aboutRoute = createRoute({
-	getParentRoute: () => rootRoute,
+	getParentRoute: () => protectedRoute,
 	path: "/about",
 	component: About,
 });
 
-const routeTree = rootRoute.addChildren([indexRoute, aboutRoute]);
+const routeTree = rootRoute.addChildren([
+	loginRoute,
+	protectedRoute.addChildren([indexRoute, aboutRoute]),
+]);
 
 const TanStackQueryProviderContext = TanStackQueryProvider.getContext();
 const router = createRouter({
