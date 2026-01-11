@@ -70,8 +70,9 @@ export const profilesApi = {
 			method: "DELETE",
 		}),
 
-	triggerCrawl: (id: string) =>
-		apiClient<ProfileCrawlQueuedResponse>(`/profiles/${id}/crawl`, {
-			method: "POST",
-		}),
+	triggerCrawl: (id: string, options?: { forceFull?: boolean }) =>
+		apiClient<ProfileCrawlQueuedResponse>(
+			`/profiles/${id}/crawl${options?.forceFull ? "?force_full=true" : ""}`,
+			{ method: "POST" },
+		),
 };

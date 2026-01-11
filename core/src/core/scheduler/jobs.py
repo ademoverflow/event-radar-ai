@@ -85,6 +85,7 @@ async def crawl_single_profile(
     session: AsyncSession,
     *,
     run_llm_analysis: bool = True,
+    force_full_crawl: bool = False,
 ) -> int:
     """Crawl a single LinkedIn profile and store the posts.
 
@@ -92,6 +93,9 @@ async def crawl_single_profile(
         profile: The profile to crawl
         session: Database session
         run_llm_analysis: Whether to run LLM signal extraction on new posts
+        force_full_crawl: If True, disables Phantombuster's duplicate detection
+                         to retrieve all posts instead of just new ones.
+                         Useful for testing or re-processing.
 
     Returns:
         Number of new posts stored
@@ -130,6 +134,7 @@ async def crawl_single_profile(
         max_posts=settings.max_posts_per_crawl,
         session_cookie=settings.linkedin_session_cookie,
         user_agent=settings.linkedin_user_agent or None,
+        remove_duplicates=not force_full_crawl,
     )
 
     stored = await _store_posts(

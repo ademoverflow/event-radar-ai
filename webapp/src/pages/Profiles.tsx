@@ -79,19 +79,22 @@ export function ProfilesPage() {
 	const confirmDelete = () => {
 		if (!deletingProfile) return;
 		deleteProfile.mutate(deletingProfile.id, {
-			onSuccess: () => {
+			onSettled: () => {
 				setDeletingProfile(undefined);
 			},
 		});
 	};
 
-	const handleTriggerCrawl = (profile: Profile) => {
+	const handleTriggerCrawl = (profile: Profile, forceFull = false) => {
 		setCrawlingProfileId(profile.id);
-		triggerCrawl.mutate(profile.id, {
-			onSettled: () => {
-				setCrawlingProfileId(null);
+		triggerCrawl.mutate(
+			{ id: profile.id, forceFull },
+			{
+				onSettled: () => {
+					setCrawlingProfileId(null);
+				},
 			},
-		});
+		);
 	};
 
 	if (isLoading) {

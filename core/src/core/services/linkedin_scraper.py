@@ -78,6 +78,8 @@ class LinkedInScraper:
         max_posts: int = 20,
         session_cookie: str | None = None,
         user_agent: str | None = None,
+        *,
+        remove_duplicates: bool = True,
     ) -> list[LinkedInPostData]:
         """Scrape recent posts from a LinkedIn profile.
 
@@ -89,6 +91,9 @@ class LinkedInScraper:
                           This overrides any cookie saved in PhantomBuster.
             user_agent: Browser user agent string. Required by PhantomBuster
                        to mimic a real browser. Get yours from browser DevTools.
+            remove_duplicates: If True (default), Phantombuster only returns new posts
+                             since last run. Set to False to get all posts (useful
+                             for testing or re-processing).
 
         Returns:
             List of post data
@@ -110,6 +115,7 @@ class LinkedInScraper:
             argument: dict[str, Any] = {
                 "spreadsheetUrl": profile_url,
                 "numberMaxOfPosts": max_posts,
+                "removeDuplicates": remove_duplicates,
             }
 
             # Inject session cookie if provided

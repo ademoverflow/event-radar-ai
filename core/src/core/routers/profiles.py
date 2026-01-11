@@ -178,7 +178,7 @@ async def delete_profile(
     await session.commit()
 
 
-async def _background_crawl_profile(profile_id: str) -> None:
+async def _background_crawl_profile(profile_id: str, *, force_full_crawl: bool = False) -> None:
     """Background task to crawl a profile with its own database session.
 
     This function creates its own session because the FastAPI request session
@@ -187,6 +187,7 @@ async def _background_crawl_profile(profile_id: str) -> None:
 
     Args:
         profile_id: The UUID of the profile to crawl (as string)
+        force_full_crawl: If True, disables Phantombuster's duplicate detection
 
     """
     async with async_session_factory() as session:
@@ -204,10 +205,16 @@ async def _background_crawl_profile(profile_id: str) -> None:
             return
 
         try:
-            posts_found = await crawl_single_profile(profile, session)
+            posts_found = await crawl_single_profile(
+                profile, session, force_full_crawl=force_full_crawl
+            )
             logger.info(
                 f"Background crawl completed for {profile.display_name}",
-                extra={"profile_id": profile_id, "posts_found": posts_found},
+                extra={
+                    "profile_id": profile_id,
+                    "posts_found": posts_found,
+                    "force_full_crawl": force_full_crawl,
+                },
             )
         except (LinkedInScraperError, ValueError):
             logger.exception(
@@ -222,11 +229,15 @@ async def trigger_crawl(
     current_user: Annotated[User, Depends(get_current_user)],
     session: Annotated[AsyncSession, Depends(get_session)],
     background_tasks: BackgroundTasks,
+    force_full: Annotated[bool, Query(description="Force full crawl (ignore Phantombuster cache)")] = False,
 ) -> ProfileCrawlQueuedResponse:
     """Queue a manual crawl for a profile using Phantombuster.
 
     This endpoint validates the profile and configuration, then queues the crawl
     as a background task. The response is returned immediately with HTTP 202.
+
+    Set `force_full=true` to bypass Phantombuster's duplicate detection and
+    retrieve all posts instead of just new ones. Useful for testing.
     """
     query = select(LinkedInMonitoredProfile).where(
         col(LinkedInMonitoredProfile.id) == profile_id,
@@ -261,10 +272,16 @@ async def trigger_crawl(
         )
 
     # Queue the background task
-    background_tasks.add_task(_background_crawl_profile, str(profile.id))
+    background_tasks.add_task(
+        _background_crawl_profile, str(profile.id), force_full_crawl=force_full
+    )
+
+    message = f"Crawl job queued for {profile.display_name}"
+    if force_full:
+        message += " (full re-crawl)"
 
     return ProfileCrawlQueuedResponse(
-        message=f"Crawl job queued for {profile.display_name}",
+        message=message,
         profile_id=profile.id,
         profile_display_name=profile.display_name,
     )

@@ -31,7 +31,7 @@ class LinkedInPost(SQLModel, table=True):
     profile_id: uuid.UUID | None = Field(
         sa_column=Column(
             UUID,
-            ForeignKey("linkedin_monitored_profiles.id", ondelete="SET NULL"),
+            ForeignKey("linkedin_monitored_profiles.id", ondelete="CASCADE"),
             nullable=True,
             index=True,
         ),
@@ -40,7 +40,7 @@ class LinkedInPost(SQLModel, table=True):
     search_id: uuid.UUID | None = Field(
         sa_column=Column(
             UUID,
-            ForeignKey("linkedin_searches.id", ondelete="SET NULL"),
+            ForeignKey("linkedin_searches.id", ondelete="CASCADE"),
             nullable=True,
             index=True,
         ),

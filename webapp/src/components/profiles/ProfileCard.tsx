@@ -4,6 +4,7 @@ import {
 	Loader2,
 	Pencil,
 	Play,
+	RefreshCw,
 	Trash2,
 	User,
 } from "lucide-react";
@@ -11,6 +12,12 @@ import type { Profile } from "@/api/profiles";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Switch } from "@/components/ui/switch";
 
 interface ProfileCardProps {
@@ -18,7 +25,7 @@ interface ProfileCardProps {
 	onEdit: (profile: Profile) => void;
 	onDelete: (profile: Profile) => void;
 	onToggleActive: (profile: Profile) => void;
-	onTriggerCrawl: (profile: Profile) => void;
+	onTriggerCrawl: (profile: Profile, forceFull?: boolean) => void;
 	isCrawling?: boolean;
 }
 
@@ -75,19 +82,34 @@ export function ProfileCard({
 							checked={profile.is_active}
 							onCheckedChange={() => onToggleActive(profile)}
 						/>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => onTriggerCrawl(profile)}
-							title="Trigger crawl"
-							disabled={isCrawling}
-						>
-							{isCrawling ? (
-								<Loader2 className="h-4 w-4 animate-spin" />
-							) : (
-								<Play className="h-4 w-4" />
-							)}
-						</Button>
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="ghost"
+									size="icon"
+									title="Trigger crawl"
+									disabled={isCrawling}
+								>
+									{isCrawling ? (
+										<Loader2 className="h-4 w-4 animate-spin" />
+									) : (
+										<Play className="h-4 w-4" />
+									)}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="end">
+								<DropdownMenuItem
+									onClick={() => onTriggerCrawl(profile, false)}
+								>
+									<Play className="h-4 w-4 mr-2" />
+									Crawl new posts
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => onTriggerCrawl(profile, true)}>
+									<RefreshCw className="h-4 w-4 mr-2" />
+									Full re-crawl
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 						<Button
 							variant="ghost"
 							size="icon"

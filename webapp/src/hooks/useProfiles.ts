@@ -53,7 +53,17 @@ export function useDeleteProfile() {
 	return useMutation({
 		mutationFn: (id: string) => profilesApi.delete(id),
 		onSuccess: () => {
+			toast.success("Profile deleted", {
+				description: "The profile and all associated data have been removed.",
+				duration: 3000,
+			});
 			queryClient.invalidateQueries({ queryKey: PROFILES_QUERY_KEY });
+		},
+		onError: (error: Error) => {
+			toast.error("Failed to delete profile", {
+				description: error.message || "An unexpected error occurred",
+				duration: 5000,
+			});
 		},
 	});
 }
@@ -61,7 +71,8 @@ export function useDeleteProfile() {
 export function useTriggerProfileCrawl() {
 	const queryClient = useQueryClient();
 	return useMutation({
-		mutationFn: (id: string) => profilesApi.triggerCrawl(id),
+		mutationFn: ({ id, forceFull }: { id: string; forceFull?: boolean }) =>
+			profilesApi.triggerCrawl(id, { forceFull }),
 		onSuccess: (data) => {
 			toast.success("Crawl Started", {
 				description: data.message,
